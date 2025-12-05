@@ -242,6 +242,8 @@ export const usePuterStore = create<PuterStore>((set, get) => {
   };
 
   const init = (): void => {
+    // Guard against multiple init calls
+    if (get().puterReady) return;
     const puter = getPuter();
     if (puter) {
       set({ puterReady: true });
