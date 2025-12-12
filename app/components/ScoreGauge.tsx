@@ -1,4 +1,3 @@
-import path from "path";
 import { useEffect, useRef, useState } from "react";
 
 const ScoreGauge = ({ score = 75 }: { score: number }) => {
@@ -51,7 +50,7 @@ const ScoreGauge = ({ score = 75 }: { score: number }) => {
           />
         </svg>
 
-        <div className='absolute inset-0 flex flex-col items-center justify-cneter pt-2'>
+        <div className='absolute inset-0 flex flex-col items-center justify-center pt-2'>
           <div className='text-xl font-semibold pt-8'>{score}/100</div>
         </div>
       </div>
