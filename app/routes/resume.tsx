@@ -22,33 +22,52 @@ const Resume = () => {
   useEffect(() => {
     if (!isLoading && !auth.isAuthenticated)
       navigate(`/auth?next=/resume/${id}`);
-  }, [isLoading]);
+  }, [isLoading, auth.isAuthenticated, navigate, id]);
 
   useEffect(() => {
+    let resumeObjUrl: string | null = null;
+    let imageObjUrl: string | null = null;
+
     const loadResume = async () => {
       const resume = await kv.get(`resume:${id}`);
 
       if (!resume) return;
 
-      const data = JSON.parse(resume);
+      // const data = JSON.parse(resume);
+      let data;
+      try {
+        data = JSON.parse(resume);
+      } catch {
+        console.error("Failed to parse resume data");
+        return;
+      }
 
       const resumeBlob = await fs.read(data.resumePath);
       if (!resumeBlob) return;
 
       const pdfBlob = new Blob([resumeBlob], { type: "application/pdf" });
-      const resumeUrl = URL.createObjectURL(pdfBlob);
-      setResumeUrl(resumeUrl);
+      // const resumeUrl = URL.createObjectURL(pdfBlob);
+      resumeObjUrl = URL.createObjectURL(pdfBlob);
+      // setResumeUrl(resumeUrl);
+      setResumeUrl(resumeObjUrl);
 
       const imageBlob = await fs.read(data.imagePath);
       if (!imageBlob) return;
-      const imageUrl = URL.createObjectURL(imageBlob);
-      setImageUrl(imageUrl);
+      // const imageUrl = URL.createObjectURL(imageBlob);
+      imageObjUrl = URL.createObjectURL(imageBlob);
+      // setImageUrl(imageUrl);
+      setImageUrl(imageObjUrl);
 
       setFeedback(data.feedback);
       console.log({ resumeUrl, imageUrl, feedback: data.feedback });
     };
 
     loadResume();
+
+    return () => {
+      if (resumeObjUrl) URL.revokeObjectURL(resumeObjUrl);
+      if (imageObjUrl) URL.revokeObjectURL(imageObjUrl);
+    };
   }, [id]);
 
   return (
@@ -63,7 +82,7 @@ const Resume = () => {
       </nav>
 
       <div className='flex flex-row w-full max-lg:flex-col-reverse'>
-        <section className="feedback-section bg-[url('/images/bg-small.svg</div>') bg-cover h-screen sticky top-0 items-center justify-center">
+        <section className="feedback-section bg-[url('/images/bg-small.svg</div>')] bg-cover h-screen sticky top-0 items-center justify-center">
           {imageUrl && resumeUrl && (
             <div className='animate-in fade-in duration-1000 gradient-border max-sm:m-0 h-[90%] max-wxl:h-fit w-fit'>
               <a href={resumeUrl} target='_blank' rel='noopener noreferrer'>
