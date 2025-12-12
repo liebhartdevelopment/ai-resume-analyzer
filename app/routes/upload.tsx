@@ -31,53 +31,59 @@ const Upload = () => {
     file: File;
   }) => {
     setIsProcessing(true);
+    try {
+      setStatusText("Uploading your resume...");
+      const uploadedFile = await fs.upload([file]);
+      if (!uploadedFile) return setStatusText("Error: Failed to upload file.");
 
-    setStatusText("Uploading your resume...");
-    const uploadedFile = await fs.upload([file]);
-    if (!uploadedFile) return setStatusText("Error: Failed to upload file.");
+      setStatusText("Converting to image...");
+      const imageFile = await convertPdfToImage(file);
+      console.log(imageFile);
+      // Ensure the converted result actually contains a File/Blob before calling fs.upload
+      if (!imageFile.file)
+        return setStatusText("Error: Converted image is missing file.");
 
-    setStatusText("Converting to image...");
-    const imageFile = await convertPdfToImage(file);
-    console.log(imageFile);
-    // Ensure the converted result actually contains a File/Blob before calling fs.upload
-    if (!imageFile.file)
-      return setStatusText("Error: Converted image is missing file.");
+      setStatusText("Uploading the image...");
+      const uploadedImage = await fs.upload([imageFile.file]);
+      if (!uploadedImage)
+        return setStatusText("Error: Failed to upload image.");
 
-    setStatusText("Uploading the image...");
-    const uploadedImage = await fs.upload([imageFile.file]);
-    if (!uploadedImage) return setStatusText("Error: Failied to upload image.");
+      setStatusText("Preparing data...");
+      const uuid = generateUUID();
+      const data = {
+        id: uuid,
+        resumePath: uploadedFile.path,
+        imagePath: uploadedImage.path,
+        companyName,
+        jobTitle,
+        jobDescription,
+        feedback: "",
+      };
+      await kv.set(`resume:${uuid}`, JSON.stringify(data));
 
-    setStatusText("Preparing data...");
-    const uuid = generateUUID();
-    const data = {
-      if: uuid,
-      resumePath: uploadedFile.path,
-      imagePath: uploadedImage.path,
-      companyName,
-      jobTitle,
-      jobDescription,
-      feedback: "",
-    };
-    await kv.set(`resume:${uuid}`, JSON.stringify(data));
+      setStatusText("Analyzing...");
 
-    setStatusText("Analyzing...");
+      const feedback = await ai.feedback(
+        uploadedFile.path,
+        prepareInstructions({ jobTitle, jobDescription })
+      );
+      if (!feedback) return setStatusText("Error: Failed to analyze resume.");
 
-    const feedback = await ai.feedback(
-      uploadedFile.path,
-      prepareInstructions({ jobTitle, jobDescription })
-    );
-    if (!feedback) return setStatusText("Error: Failed to analyze resume.");
+      const feedbackText =
+        typeof feedback.message.content === "string"
+          ? feedback.message.content
+          : feedback.message.content[0].text;
 
-    const feedbackText =
-      typeof feedback.message.content === "string"
-        ? feedback.message.content
-        : feedback.message.content[0].text;
-
-    data.feedback = JSON.parse(feedbackText);
-    await kv.set(`resume:${uuid}`, JSON.stringify(data));
-    setStatusText("Analysis complete, redirecting...");
-    console.log(data);
-    navigate(`/resume/${uuid}`);
+      data.feedback = JSON.parse(feedbackText);
+      await kv.set(`resume:${uuid}`, JSON.stringify(data));
+      setStatusText("Analysis complete, redirecting...");
+      console.log(data);
+      navigate(`/resume/${uuid}`);
+    } catch (error) {
+      setStatusText("Error: An unexpected error occurred.");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
